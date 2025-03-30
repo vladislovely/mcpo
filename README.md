@@ -2,7 +2,7 @@
 
 Expose any MCP tool as an OpenAPI-compatible HTTP server—instantly.
 
-mcpo is a dead-simple proxy that takes an MCP command and makes it accessible via standard RESTful OpenAPI, so your tools "just work" with LLM agents and apps expecting OpenAPI servers.
+mcpo is a dead-simple proxy that takes an MCP server command and makes it accessible via standard RESTful OpenAPI, so your tools "just work" with LLM agents and apps expecting OpenAPI servers.
 
 No custom protocol. No glue code. No hassle.
 
@@ -11,14 +11,20 @@ No custom protocol. No glue code. No hassle.
 We recommend using uv for lightning-fast startup and zero config.
 
 ```bash
-uvx mcpo --port 8000 -- uvx mcp-server-time --local-timezone=America/New_York
+uvx mcpo --port 8000 -- your_mcp_server_command
 ```
 
 Or, if you’re using Python:
 
 ```bash
 pip install mcpo
-mcpo --host 0.0.0.0 --port 8000 -- uvx mcp-server-time --local-timezone=America/New_York
+mcpo --host 0.0.0.0 --port 8000 -- your_mcp_server_command
+```
+
+Example:
+
+```bash
+uvx mcpo --port 8000 -- uvx mcp-server-time --local-timezone=America/New_York
 ```
 
 That’s it. Your MCP tool is now available at http://localhost:8000 with a generated OpenAPI schema.
