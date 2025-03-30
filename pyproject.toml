@@ -1,7 +1,10 @@
 [project]
 name = "mcpo"
-version = "0.0.3"
+version = "0.0.4"
 description = "A simple, secure MCP-to-OpenAPI proxy server"
+authors = [
+    { name = "Timothy Jaeryang Baek", email = "tim@openwebui.com" }
+]
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
