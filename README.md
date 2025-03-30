@@ -18,7 +18,7 @@ Or, if you’re using Python:
 
 ```bash
 pip install mcpo
-mcpo --host 0.0.0.0 --port 8000 -- your_mcp_server_command
+mcpo --port 8000 -- your_mcp_server_command
 ```
 
 Example:
