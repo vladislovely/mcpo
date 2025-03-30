@@ -32,7 +32,6 @@ That’s it. Your MCP tool is now available at http://localhost:8000 with a gene
 ## 🔧 Requirements
 
 - Python 3.8+
-- MCP tool installed (e.g. mcp-server-time)
 - uv (optional, but highly recommended for performance + packaging)
 
 ## 🪪 License
