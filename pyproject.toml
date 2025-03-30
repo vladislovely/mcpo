@@ -1,0 +1,7 @@
+[project]
+name = "mcpo"
+version = "0.0.1"
+description = "A simple, secure MCP-to-OpenAPI proxy server"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
