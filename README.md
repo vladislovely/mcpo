@@ -29,6 +29,40 @@ uvx mcpo --port 8000 -- uvx mcp-server-time --local-timezone=America/New_York
 
 That’s it. Your MCP tool is now available at http://localhost:8000 with a generated OpenAPI schema.
 
+### 🔄 Using a Config File
+
+You can serve multiple MCP tools via a single config file that follows the [Claude Desktop](https://github.com/anthropics/claude-desktop) format:
+
+Start via:
+
+```bash
+mcpo --config /path/to/config.json
+```
+
+Example config.json:
+
+```json
+{
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "time": {
+      "command": "uvx",
+      "args": ["mcp-server-time", "--local-timezone=America/New_York"]
+    }
+  }
+}
+```
+
+Each tool will be accessible under its own unique route, e.g.:
+- http://localhost:8000/memory
+- http://localhost:8000/time
+
+Each with a dedicated OpenAPI schema and proxy handler.
+
+
 ## 🔧 Requirements
 
 - Python 3.8+
