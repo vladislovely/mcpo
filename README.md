@@ -31,7 +31,7 @@ That’s it. Your MCP tool is now available at http://localhost:8000 with a gene
 
 ### 🔄 Using a Config File
 
-You can serve multiple MCP tools via a single config file that follows the [Claude Desktop](https://github.com/anthropics/claude-desktop) format:
+You can serve multiple MCP tools via a single config file that follows the [Claude Desktop](https://modelcontextprotocol.io/quickstart/user) format:
 
 Start via:
 
