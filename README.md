@@ -27,7 +27,7 @@ Example:
 uvx mcpo --port 8000 -- uvx mcp-server-time --local-timezone=America/New_York
 ```
 
-That’s it. Your MCP tool is now available at http://localhost:8000 with a generated OpenAPI schema.
+That’s it. Your MCP tool is now available at http://localhost:8000 with a generated OpenAPI schema — test it live at [http://localhost:8000/docs](http://localhost:8000/docs).
 
 ### 🔄 Using a Config File
 
@@ -60,8 +60,7 @@ Each tool will be accessible under its own unique route, e.g.:
 - http://localhost:8000/memory
 - http://localhost:8000/time
 
-Each with a dedicated OpenAPI schema and proxy handler.
-
+Each with a dedicated OpenAPI schema and proxy handler. Access full schema UI at: `http://localhost:8000/<tool>/docs`  (e.g. /memory/docs, /time/docs)
 
 ## 🔧 Requirements
 
