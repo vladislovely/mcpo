@@ -70,7 +70,7 @@ async def create_dynamic_endpoints(app: FastAPI):
 
         def make_endpoint_func(endpoint_name: str, FormModel, session: ClientSession):
             async def tool_endpoint(form_data: FormModel):
-                args = form_data.model_dump()
+                args = form_data.model_dump(exclude_none=True)
                 print(f"Calling {endpoint_name} with arguments:", args)
                 result = await session.call_tool(endpoint_name, arguments=args)
                 response = []
