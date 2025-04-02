@@ -18,6 +18,10 @@ def main(
     port: Annotated[
         Optional[int], typer.Option("--port", "-p", help="Port number")
     ] = 8000,
+    cors_allow_origins: Annotated[
+        Optional[List[str]],
+        typer.Option("--cors-allow-origins", help="CORS allowed origins"),
+    ] = ["*"],
     env: Annotated[
         Optional[List[str]], typer.Option("--env", "-e", help="Environment variables")
     ] = None,
@@ -72,6 +76,7 @@ def main(
         run(
             host,
             port,
+            cors_allow_origins=cors_allow_origins,
             config=config,
             name=name,
             description=description,

@@ -124,7 +124,9 @@ async def lifespan(app: FastAPI):
                 yield
 
 
-async def run(host: str = "127.0.0.1", port: int = 8000, **kwargs):
+async def run(
+    host: str = "127.0.0.1", port: int = 8000, cors_allow_origins=["*"], **kwargs
+):
     config_path = kwargs.get("config")
     server_command = kwargs.get("server_command")
     name = kwargs.get("name") or "MCP OpenAPI Proxy"
@@ -139,7 +141,7 @@ async def run(host: str = "127.0.0.1", port: int = 8000, **kwargs):
 
     main_app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=cors_allow_origins or ["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -167,7 +169,7 @@ async def run(host: str = "127.0.0.1", port: int = 8000, **kwargs):
 
             sub_app.add_middleware(
                 CORSMiddleware,
-                allow_origins=["*"],
+                allow_origins=cors_allow_origins or ["*"],
                 allow_credentials=True,
                 allow_methods=["*"],
                 allow_headers=["*"],
