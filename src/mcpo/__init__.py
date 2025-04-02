@@ -22,6 +22,10 @@ def main(
         Optional[List[str]],
         typer.Option("--cors-allow-origins", help="CORS allowed origins"),
     ] = ["*"],
+    api_key: Annotated[
+        Optional[str],
+        typer.Option("--api-key", "-k", help="API key for authentication"),
+    ] = None,
     env: Annotated[
         Optional[List[str]], typer.Option("--env", "-e", help="Environment variables")
     ] = None,
@@ -76,6 +80,7 @@ def main(
         run(
             host,
             port,
+            api_key=api_key,
             cors_allow_origins=cors_allow_origins,
             config=config,
             name=name,

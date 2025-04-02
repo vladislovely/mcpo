@@ -1,6 +1,6 @@
 [project]
 name = "mcpo"
-version = "0.0.5"
+version = "0.0.6"
 description = "A simple, secure MCP-to-OpenAPI proxy server"
 authors = [
     { name = "Timothy Jaeryang Baek", email = "tim@openwebui.com" }
@@ -11,6 +11,8 @@ dependencies = [
     "click>=8.1.8",
     "fastapi>=0.115.12",
     "mcp>=1.6.0",
+    "passlib[bcrypt]>=1.7.4",
+    "pyjwt[crypto]>=2.10.1",
     "typer>=0.15.2",
     "uvicorn>=0.34.0",
 ]

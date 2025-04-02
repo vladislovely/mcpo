@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, Body, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.routing import Mount
 from pydantic import create_model
@@ -7,10 +7,12 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from mcp import ClientSession, StdioServerParameters, types
 from mcp.client.stdio import stdio_client
 
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Optional
 import uvicorn
 import json
 import os
+
+from mcpo.utils.auth import get_verify_api_key
 
 
 def get_python_type(param_type: str):
@@ -31,7 +33,7 @@ def get_python_type(param_type: str):
     # Expand as needed. PRs welcome!
 
 
-async def create_dynamic_endpoints(app: FastAPI):
+async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
     session = app.state.session
     if not session:
         raise ValueError("Session is not initialized in the app state.")
@@ -92,6 +94,7 @@ async def create_dynamic_endpoints(app: FastAPI):
             f"/{endpoint_name}",
             summary=endpoint_name.replace("_", " ").title(),
             description=endpoint_description,
+            dependencies=[Depends(api_dependency)] if api_dependency else [],
         )(tool)
 
 
@@ -100,6 +103,8 @@ async def lifespan(app: FastAPI):
     command = getattr(app.state, "command", None)
     args = getattr(app.state, "args", [])
     env = getattr(app.state, "env", {})
+
+    api_dependency = getattr(app.state, "api_dependency", None)
 
     if not command:
         async with AsyncExitStack() as stack:
@@ -120,13 +125,22 @@ async def lifespan(app: FastAPI):
         async with stdio_client(server_params) as (reader, writer):
             async with ClientSession(reader, writer) as session:
                 app.state.session = session
-                await create_dynamic_endpoints(app)
+                await create_dynamic_endpoints(app, api_dependency=api_dependency)
                 yield
 
 
 async def run(
-    host: str = "127.0.0.1", port: int = 8000, cors_allow_origins=["*"], **kwargs
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    api_key: Optional[str] = "",
+    cors_allow_origins=["*"],
+    **kwargs,
 ):
+
+    # Server API Key
+    api_dependency = get_verify_api_key(api_key) if api_key else None
+
+    # MCP Config
     config_path = kwargs.get("config")
     server_command = kwargs.get("server_command")
     name = kwargs.get("name") or "MCP OpenAPI Proxy"
@@ -148,9 +162,12 @@ async def run(
     )
 
     if server_command:
+
         main_app.state.command = server_command[0]
         main_app.state.args = server_command[1:]
         main_app.state.env = os.environ.copy()
+
+        main_app.state.api_dependency = api_dependency
     elif config_path:
         with open(config_path, "r") as f:
             config_data = json.load(f)
@@ -178,6 +195,8 @@ async def run(
             sub_app.state.command = server_cfg["command"]
             sub_app.state.args = server_cfg.get("args", [])
             sub_app.state.env = {**os.environ, **server_cfg.get("env", {})}
+
+            sub_app.state.api_dependency = api_dependency
 
             main_app.mount(f"/{server_name}", sub_app)
 
