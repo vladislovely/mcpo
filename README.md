@@ -89,3 +89,20 @@ Each with a dedicated OpenAPI schema and proxy handler. Access full schema UI at
 ## 🪪 License
 
 MIT
+
+## 🤝 Contributing
+
+We welcome and strongly encourage contributions from the community!
+
+Whether you're fixing a bug, adding features, improving documentation, or just sharing ideas—your input is incredibly valuable and helps make mcpo better for everyone.
+
+Getting started is easy:
+
+- Fork the repo
+- Create a new branch
+- Make your changes
+- Open a pull request
+
+Not sure where to start? Feel free to open an issue or ask a question—we’re happy to help you find a good first task.
+
+✨ Let's build the future of interoperable AI tooling together!
