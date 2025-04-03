@@ -87,10 +87,6 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
                         response.append(text)
                     elif isinstance(content, types.ImageContent):
                         image_data = content.data
-
-                        if isinstance(image_data, bytes):
-                            image_data = image_data.decode("utf-8")
-
                         image_data = f"data:{content.mimeType};base64,{image_data}"
                         response.append(image_data)
                     elif isinstance(content, types.EmbeddedResource):
