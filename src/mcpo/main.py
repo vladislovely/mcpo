@@ -77,13 +77,26 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
                 result = await session.call_tool(endpoint_name, arguments=args)
                 response = []
                 for content in result.content:
-                    text = content.text
-                    if isinstance(text, str):
-                        try:
-                            text = json.loads(text)
-                        except json.JSONDecodeError:
-                            pass
-                    response.append(text)
+                    if isinstance(content, types.TextContent):
+                        text = content.text
+                        if isinstance(text, str):
+                            try:
+                                text = json.loads(text)
+                            except json.JSONDecodeError:
+                                pass
+                        response.append(text)
+                    elif isinstance(content, types.ImageContent):
+                        image_data = content.data
+
+                        if isinstance(image_data, bytes):
+                            image_data = image_data.decode("utf-8")
+
+                        image_data = f"data:{content.mimeType};base64,{image_data}"
+                        response.append(image_data)
+                    elif isinstance(content, types.EmbeddedResource):
+                        # TODO: Handle embedded resources
+                        response.append("Embedded resource not supported yet.")
+
                 return response
 
             return tool_endpoint
