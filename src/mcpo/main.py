@@ -58,7 +58,8 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
         # Build Pydantic model
         model_fields = {}
         required_fields = schema.get("required", [])
-        for param_name, param_schema in schema["properties"].items():
+        properties = schema.get("properties", {})
+        for param_name, param_schema in properties.items():
             param_type = param_schema.get("type", "string")
             param_desc = param_schema.get("description", "")
             python_type = get_python_type(param_type)
