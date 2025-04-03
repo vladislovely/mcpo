@@ -30,20 +30,20 @@ mcpo makes your AI tools usable, secure, and interoperable—right now, with zer
 We recommend using uv for lightning-fast startup and zero config.
 
 ```bash
-uvx mcpo --port 8000 -- your_mcp_server_command
+uvx mcpo --port 8000 --api-key "hello-world" -- your_mcp_server_command
 ```
 
 Or, if you’re using Python:
 
 ```bash
 pip install mcpo
-mcpo --port 8000 -- your_mcp_server_command
+mcpo --port 8000 --api-key "hello-world" -- your_mcp_server_command
 ```
 
 Example:
 
 ```bash
-uvx mcpo --port 8000 -- uvx mcp-server-time --local-timezone=America/New_York
+uvx mcpo --port 8000 --api-key "hello-world" -- uvx mcp-server-time --local-timezone=America/New_York
 ```
 
 That’s it. Your MCP tool is now available at http://localhost:8000 with a generated OpenAPI schema — test it live at [http://localhost:8000/docs](http://localhost:8000/docs).
