@@ -47,8 +47,8 @@ def main(
     ssl_keyfile: Annotated[
         Optional[str], typer.Option("--ssl-keyfile", "-k",  help="SSL keyfile")
     ] = None,
-    prefix: Annotated[
-        Optional[str], typer.Option("--prefix", "-x",  help="URL prefix")
+    path_prefix: Annotated[
+        Optional[str], typer.Option("--path_prefix", "-x",  help="URL prefix")
     ] = None,
 ):
     server_command = None
@@ -109,7 +109,7 @@ def main(
             server_command=server_command,
             ssl_certfile=ssl_certfile,
             ssl_keyfile=ssl_keyfile,
-            prefix=prefix,
+            path_prefix=path_prefix,
         )
     )
 

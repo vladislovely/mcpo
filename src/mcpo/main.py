@@ -159,7 +159,7 @@ async def run(
     version = kwargs.get("version") or "1.0"
     ssl_certfile = kwargs.get("ssl_certfile")
     ssl_keyfile= kwargs.get("ssl_keyfile")
-    prefix = kwargs.get("prefix") or "/"
+    path_prefix = kwargs.get("path_prefix") or "/"
 
     main_app = FastAPI(
         title=name, description=description, version=version, ssl_certfile=ssl_certfile, ssl_keyfile=ssl_keyfile, lifespan=lifespan
@@ -210,7 +210,7 @@ async def run(
 
             sub_app.state.api_dependency = api_dependency
 
-            main_app.mount(f"{prefix}{server_name}", sub_app)
+            main_app.mount(f"{path_prefix}{server_name}", sub_app)
 
     else:
         raise ValueError("You must provide either server_command or config.")
