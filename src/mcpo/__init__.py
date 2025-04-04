@@ -85,15 +85,15 @@ def main(
         os.environ[key] = value
 
     # Whatever the prefix is, make sure it starts and ends with a /
-    if prefix is None:
+    if path_prefix is None:
         # Set default value
-        prefix = "/"
+        path_prefix = "/"
     # if prefix doesn't end with a /, add it
-    if not prefix.endswith("/"):
-        prefix = f"{prefix}/"
+    if not path_prefix.endswith("/"):
+        path_prefix = f"{path_prefix}/"
     # if prefix doesn't start with a /, add it
-    if not prefix.startswith("/"):
-        prefix = f"/{prefix}"
+    if not path_prefix.startswith("/"):
+        path_prefix = f"/{path_prefix}"
 
     # Run your async run function from mcpo.main
     asyncio.run(
