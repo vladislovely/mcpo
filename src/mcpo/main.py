@@ -210,7 +210,7 @@ async def run(
 
             sub_app.state.api_dependency = api_dependency
 
-            main_app.mount(f"/mcpo/{server_name}", sub_app)
+            main_app.mount(f"{prefix}{server_name}", sub_app)
 
     else:
         raise ValueError("You must provide either server_command or config.")
