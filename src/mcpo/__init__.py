@@ -47,6 +47,9 @@ def main(
     ssl_keyfile: Annotated[
         Optional[str], typer.Option("--ssl-keyfile", "-k",  help="SSL keyfile")
     ] = None,
+    prefix: Annotated[
+        Optional[str], typer.Option("--prefix", "-x",  help="URL prefix")
+    ] = None,
 ):
     server_command = None
     if not config:
@@ -81,6 +84,17 @@ def main(
     for key, value in env_dict.items():
         os.environ[key] = value
 
+    # Whatever the prefix is, make sure it starts and ends with a /
+    if prefix is None:
+        # Set default value
+        prefix = "/"
+    # if prefix doesn't end with a /, add it
+    if not prefix.endswith("/"):
+        prefix = f"{prefix}/"
+    # if prefix doesn't start with a /, add it
+    if not prefix.startswith("/"):
+        prefix = f"/{prefix}"
+
     # Run your async run function from mcpo.main
     asyncio.run(
         run(
@@ -95,6 +109,7 @@ def main(
             server_command=server_command,
             ssl_certfile=ssl_certfile,
             ssl_keyfile=ssl_keyfile,
+            prefix=prefix,
         )
     )
 
