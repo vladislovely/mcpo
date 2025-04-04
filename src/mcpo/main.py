@@ -154,7 +154,7 @@ async def run(
     )
     version = kwargs.get("version") or "1.0"
     ssl_certfile = kwargs.get("ssl_certfile")
-    ssl_keyfile= kwargs.get("ssl_keyfile")
+    ssl_keyfile = kwargs.get("ssl_keyfile")
     path_prefix = kwargs.get("path_prefix") or "/"
 
     main_app = FastAPI(
