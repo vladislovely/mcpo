@@ -8,6 +8,8 @@ from fastapi import FastAPI, Body, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from mcp import ClientSession, StdioServerParameters, types
 from mcp.client.stdio import stdio_client
+from mcp.types import CallToolResult
+
 from mcpo.utils.auth import get_verify_api_key
 from pydantic import create_model
 from starlette.routing import Mount
@@ -30,6 +32,25 @@ def get_python_type(param_type: str):
         return str  # Fallback
     # Expand as needed. PRs welcome!
 
+def process_tool_response(result: CallToolResult) -> list:
+    """Universal response processor for all tool endpoints"""
+    response = []
+    for content in result.content:
+        if isinstance(content, types.TextContent):
+            text = content.text
+            if isinstance(text, str):
+                try:
+                    text = json.loads(text)
+                except json.JSONDecodeError:
+                    pass
+            response.append(text)
+        elif isinstance(content, types.ImageContent):
+            image_data = f"data:{content.mimeType};base64,{content.data}"
+            response.append(image_data)
+        elif isinstance(content, types.EmbeddedResource):
+            # TODO: Handle embedded resources
+            response.append("Embedded resource not supported yet.")
+    return response
 
 async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
     session = app.state.session
@@ -40,7 +61,9 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
     server_info = getattr(result, "serverInfo", None)
     if server_info:
         app.title = server_info.name or app.title
-        app.description = app.description
+        app.description = (
+            f"{server_info.name} MCP Server" if server_info.name else app.description
+        )
         app.version = server_info.version or app.version
 
     tools_result = await session.list_tools()
@@ -51,10 +74,10 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
         endpoint_description = tool.description
         schema = tool.inputSchema
 
-        # Build Pydantic model
         model_fields = {}
         required_fields = schema.get("required", [])
         properties = schema.get("properties", {})
+
         for param_name, param_schema in properties.items():
             param_type = param_schema.get("type", "string")
             param_desc = param_schema.get("description", "")
@@ -65,43 +88,32 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
                 Body(default_value, description=param_desc),
             )
 
-        FormModel = create_model(f"{endpoint_name}_form_model", **model_fields)
+        if model_fields:
+            FormModel = create_model(f"{endpoint_name}_form_model", **model_fields)
 
-        def make_endpoint_func(endpoint_name: str, FormModel, session: ClientSession):
-            async def tool_endpoint(form_data: FormModel):
-                args = form_data.model_dump(exclude_none=True)
-                print(f"Calling {endpoint_name} with arguments:", args)
-                result = await session.call_tool(endpoint_name, arguments=args)
-                response = []
-                for content in result.content:
-                    if isinstance(content, types.TextContent):
-                        text = content.text
-                        if isinstance(text, str):
-                            try:
-                                text = json.loads(text)
-                            except json.JSONDecodeError:
-                                pass
-                        response.append(text)
-                    elif isinstance(content, types.ImageContent):
-                        image_data = content.data
-                        image_data = f"data:{content.mimeType};base64,{image_data}"
-                        response.append(image_data)
-                    elif isinstance(content, types.EmbeddedResource):
-                        # TODO: Handle embedded resources
-                        response.append("Embedded resource not supported yet.")
+            def make_endpoint_func(endpoint_name: str, FormModel, session: ClientSession):  # Parameterized endpoint
+                async def tool_endpoint(form_data: FormModel):
+                    args = form_data.model_dump(exclude_none=True)
+                    result = await session.call_tool(endpoint_name, arguments=args)
+                    return process_tool_response(result)
+                return tool_endpoint
 
-                return response
+            tool_handler = make_endpoint_func(endpoint_name, FormModel, session)
+        else:
+            def make_endpoint_func_no_args(endpoint_name: str, session: ClientSession):  # Parameterless endpoint
+                async def tool_endpoint():  # No parameters
+                    result = await session.call_tool(endpoint_name, arguments={})  # Empty dict
+                    return process_tool_response(result)  # Same processor
+                return tool_endpoint
 
-            return tool_endpoint
-
-        tool = make_endpoint_func(endpoint_name, FormModel, session)
+            tool_handler = make_endpoint_func_no_args(endpoint_name, session)
 
         app.post(
             f"/{endpoint_name}",
             summary=endpoint_name.replace("_", " ").title(),
             description=endpoint_description,
             dependencies=[Depends(api_dependency)] if api_dependency else [],
-        )(tool)
+        )(tool_handler)
 
 
 @asynccontextmanager
