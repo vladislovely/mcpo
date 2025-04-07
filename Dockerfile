@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js and npm via NodeSource 
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
@@ -21,10 +21,16 @@ RUN node -v && npm -v
 COPY . /app
 WORKDIR /app
 
-# Install mcpo via uv
-RUN uv venv \
-    && uv pip install . \
-    && rm -rf ~/.cache
+# Create virtual environment explicitly in known location
+ENV VIRTUAL_ENV=/app/.venv
+RUN uv venv "$VIRTUAL_ENV"
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Install mcpo (assuming pyproject.toml is properly configured)
+RUN uv pip install . && rm -rf ~/.cache
+
+# Verify mcpo installed correctly
+RUN which mcpo
 
 # Expose port (optional but common default)
 EXPOSE 8000
