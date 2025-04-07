@@ -96,8 +96,11 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
             def make_endpoint_func(
                 endpoint_name: str, FormModel, session: ClientSession
             ):  # Parameterized endpoint
+
                 async def tool(form_data: FormModel):
                     args = form_data.model_dump(exclude_none=True)
+                    print(f"Calling endpoint: {endpoint_name}, with args: {args}")
+
                     result = await session.call_tool(endpoint_name, arguments=args)
                     return process_tool_response(result)
 
@@ -110,6 +113,7 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
                 endpoint_name: str, session: ClientSession
             ):  # Parameterless endpoint
                 async def tool():  # No parameters
+                    print(f"Calling endpoint: {endpoint_name}, with no args")
                     result = await session.call_tool(
                         endpoint_name, arguments={}
                     )  # Empty dict
