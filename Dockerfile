@@ -18,8 +18,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 RUN node -v && npm -v
 
 # Copy your mcpo source code (assuming in src/mcpo)
-COPY src/mcpo /app/mcpo
-COPY pyproject.toml /app/
+COPY . /app
 WORKDIR /app
 
 # Install mcpo via uv
