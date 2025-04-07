@@ -40,6 +40,12 @@ pip install mcpo
 mcpo --port 8000 --api-key "top-secret" -- your_mcp_server_command
 ```
 
+You can also run mcpo via Docker with no installation:
+
+```bash
+docker run -p 8000:8000 ghcr.io/open-webui/mcpo:main --api-key "top-secret" -- your_mcp_server_command
+```
+
 Example:
 
 ```bash

@@ -294,13 +294,14 @@ wheels = [
 
 [[package]]
 name = "mcpo"
-version = "0.0.6"
+version = "0.0.9"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "fastapi" },
     { name = "mcp" },
     { name = "passlib", extra = ["bcrypt"] },
+    { name = "pydantic" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "typer" },
     { name = "uvicorn" },
@@ -312,6 +313,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115.12" },
     { name = "mcp", specifier = ">=1.6.0" },
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.4" },
+    { name = "pydantic", specifier = ">=2.11.1" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10.1" },
     { name = "typer", specifier = ">=0.15.2" },
     { name = "uvicorn", specifier = ">=0.34.0" },
