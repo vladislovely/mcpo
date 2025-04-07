@@ -74,15 +74,18 @@ def main(
             f"Starting MCP OpenAPI Proxy on {host}:{port} with command: {' '.join(server_command)}"
         )
 
-    env_dict = {}
-    if env:
-        for var in env:
-            key, value = var.split("=", 1)
-            env_dict[key] = value
+    try:
+        env_dict = {}
+        if env:
+            for var in env:
+                key, value = var.split("=", 1)
+                env_dict[key] = value
 
-    # Set environment variables
-    for key, value in env_dict.items():
-        os.environ[key] = value
+        # Set environment variables
+        for key, value in env_dict.items():
+            os.environ[key] = value
+    except Exception as e:
+        pass
 
     # Whatever the prefix is, make sure it starts and ends with a /
     if path_prefix is None:
