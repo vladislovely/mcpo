@@ -218,7 +218,7 @@ async def run(
         for server_name, server_cfg in mcp_servers.items():
             sub_app = FastAPI(
                 title=f"{server_name}",
-                description=f"{server_name} MCP Server\n\n- [back to tool list](http://{host}:{port}/docs)",
+                description=f"{server_name} MCP Server\n\n- [back to tool list](/docs)",
                 version="1.0",
                 lifespan=lifespan,
             )
@@ -237,9 +237,7 @@ async def run(
 
             sub_app.state.api_dependency = api_dependency
             main_app.mount(f"{path_prefix}{server_name}", sub_app)
-            main_app.description += (
-                f"\n    - [{server_name}](http://{host}:{port}/{server_name}/docs)"
-            )
+            main_app.description += f"\n    - [{server_name}](/{server_name}/docs)"
     else:
         raise ValueError("You must provide either server_command or config.")
 
