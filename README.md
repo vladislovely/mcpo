@@ -94,6 +94,26 @@ Each with a dedicated OpenAPI schema and proxy handler. Access full schema UI at
 - Python 3.8+
 - uv (optional, but highly recommended for performance + packaging)
 
+## 🛠️ Development & Testing
+
+To contribute or run tests locally:
+
+1.  **Set up the environment:**
+    ```bash
+    # Clone the repository
+    git clone https://github.com/open-webui/mcpo.git
+    cd mcpo
+
+    # Install dependencies (including dev dependencies)
+    uv sync --dev
+    ```
+
+2.  **Run tests:**
+    ```bash
+    pytest
+    ```
+
+
 ## 🪪 License
 
 MIT

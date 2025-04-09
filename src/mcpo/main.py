@@ -1,36 +1,91 @@
 import json
 import os
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Type, Union, ForwardRef
 
 import uvicorn
-from fastapi import FastAPI, Body, Depends
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from mcp import ClientSession, StdioServerParameters, types
 from mcp.client.stdio import stdio_client
 from mcp.types import CallToolResult
 
 from mcpo.utils.auth import get_verify_api_key
-from pydantic import create_model
+from pydantic import create_model, Field
+from pydantic.fields import FieldInfo
 from starlette.routing import Mount
 
 
-def get_python_type(param_type: str):
-    if param_type == "string":
-        return str
-    elif param_type == "integer":
-        return int
-    elif param_type == "boolean":
-        return bool
-    elif param_type == "number":
-        return float
-    elif param_type == "object":
-        return Dict[str, Any]
-    elif param_type == "array":
-        return list
+_model_cache: Dict[str, Type] = {}
+
+def _process_schema_property(
+    prop_schema: Dict[str, Any],
+    model_name_prefix: str,
+    prop_name: str,
+    is_required: bool,
+) -> tuple[Union[Type, List, ForwardRef, Any], FieldInfo]:
+    """
+    Recursively processes a schema property to determine its Python type hint
+    and Pydantic Field definition.
+
+    Returns:
+        A tuple containing (python_type_hint, pydantic_field).
+        The pydantic_field contains default value and description.
+    """
+    prop_type = prop_schema.get("type")
+    prop_desc = prop_schema.get("description", "")
+    default_value = ... if is_required else prop_schema.get("default", None)
+    pydantic_field = Field(default=default_value, description=prop_desc)
+
+    if prop_type == "object":
+        nested_properties = prop_schema.get("properties", {})
+        nested_required = prop_schema.get("required", [])
+        nested_fields = {}
+
+        nested_model_name = f"{model_name_prefix}_{prop_name}_model".replace("__", "_").rstrip('_')
+
+        if nested_model_name in _model_cache:
+            return _model_cache[nested_model_name], pydantic_field
+
+        for name, schema in nested_properties.items():
+            is_nested_required = name in nested_required
+            nested_type_hint, nested_pydantic_field = _process_schema_property(
+                schema, nested_model_name, name, is_nested_required
+            )
+
+            nested_fields[name] = (nested_type_hint, nested_pydantic_field)
+
+        if not nested_fields:
+             return Dict[str, Any], pydantic_field
+
+        NestedModel = create_model(nested_model_name, **nested_fields)
+        _model_cache[nested_model_name] = NestedModel
+
+        return NestedModel, pydantic_field
+
+    elif prop_type == "array":
+        items_schema = prop_schema.get("items")
+        if not items_schema:
+            # Default to list of anything if items schema is missing
+            return List[Any], pydantic_field
+
+        # Recursively determine the type of items in the array
+        item_type_hint, _ = _process_schema_property(
+            items_schema, f"{model_name_prefix}_{prop_name}", "item", False # Items aren't required at this level
+        )
+        list_type_hint = List[item_type_hint]
+        return list_type_hint, pydantic_field
+
+    elif prop_type == "string":
+        return str, pydantic_field
+    elif prop_type == "integer":
+        return int, pydantic_field
+    elif prop_type == "boolean":
+        return bool, pydantic_field
+    elif prop_type == "number":
+        return float, pydantic_field
     else:
-        return str  # Fallback
-    # Expand as needed. PRs welcome!
+        return Any, pydantic_field
 
 
 def process_tool_response(result: CallToolResult) -> list:
@@ -80,18 +135,17 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
         required_fields = schema.get("required", [])
         properties = schema.get("properties", {})
 
+        form_model_name = f"{endpoint_name}_form_model"
         for param_name, param_schema in properties.items():
-            param_type = param_schema.get("type", "string")
-            param_desc = param_schema.get("description", "")
-            python_type = get_python_type(param_type)
-            default_value = ... if param_name in required_fields else None
-            model_fields[param_name] = (
-                python_type,
-                Body(default_value, description=param_desc),
+            is_required = param_name in required_fields
+            python_type_hint, pydantic_field_info = _process_schema_property(
+                param_schema, form_model_name, param_name, is_required
             )
+            # Use the generated type hint and Field info
+            model_fields[param_name] = (python_type_hint, pydantic_field_info)
 
         if model_fields:
-            FormModel = create_model(f"{endpoint_name}_form_model", **model_fields)
+            FormModel = create_model(form_model_name, **model_fields)
 
             def make_endpoint_func(
                 endpoint_name: str, FormModel, session: ClientSession
