@@ -1,61 +1,24 @@
 import json
 import os
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import Dict, Any, Optional
+from typing import Optional
 
 import uvicorn
-from fastapi import FastAPI, Body, Depends
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from mcp import ClientSession, StdioServerParameters, types
-from mcp.client.stdio import stdio_client
-from mcp.types import CallToolResult
-
-from mcpo.utils.auth import get_verify_api_key
-from pydantic import create_model
 from starlette.routing import Mount
 
 
-def get_python_type(param_type: str):
-    if param_type == "string":
-        return str
-    elif param_type == "integer":
-        return int
-    elif param_type == "boolean":
-        return bool
-    elif param_type == "number":
-        return float
-    elif param_type == "object":
-        return Dict[str, Any]
-    elif param_type == "array":
-        return list
-    else:
-        return str  # Fallback
-    # Expand as needed. PRs welcome!
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
 
-def process_tool_response(result: CallToolResult) -> list:
-    """Universal response processor for all tool endpoints"""
-    response = []
-    for content in result.content:
-        if isinstance(content, types.TextContent):
-            text = content.text
-            if isinstance(text, str):
-                try:
-                    text = json.loads(text)
-                except json.JSONDecodeError:
-                    pass
-            response.append(text)
-        elif isinstance(content, types.ImageContent):
-            image_data = f"data:{content.mimeType};base64,{content.data}"
-            response.append(image_data)
-        elif isinstance(content, types.EmbeddedResource):
-            # TODO: Handle embedded resources
-            response.append("Embedded resource not supported yet.")
-    return response
+from mcpo.utils.main import get_model_fields, get_tool_handler
+from mcpo.utils.auth import get_verify_api_key
 
 
 async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
-    session = app.state.session
+    session: ClientSession = app.state.session
     if not session:
         raise ValueError("Session is not initialized in the app state.")
 
@@ -76,53 +39,26 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
         endpoint_description = tool.description
         schema = tool.inputSchema
 
-        model_fields = {}
         required_fields = schema.get("required", [])
         properties = schema.get("properties", {})
 
-        for param_name, param_schema in properties.items():
-            param_type = param_schema.get("type", "string")
-            param_desc = param_schema.get("description", "")
-            python_type = get_python_type(param_type)
-            default_value = ... if param_name in required_fields else None
-            model_fields[param_name] = (
-                python_type,
-                Body(default_value, description=param_desc),
-            )
+        form_model_name = f"{endpoint_name}_form_model"
 
-        if model_fields:
-            FormModel = create_model(f"{endpoint_name}_form_model", **model_fields)
+        model_fields = get_model_fields(
+            form_model_name,
+            properties,
+            required_fields,
+        )
 
-            def make_endpoint_func(
-                endpoint_name: str, FormModel, session: ClientSession
-            ):  # Parameterized endpoint
-                async def tool(form_data: FormModel):
-                    args = form_data.model_dump(exclude_none=True)
-                    result = await session.call_tool(endpoint_name, arguments=args)
-                    return process_tool_response(result)
-
-                return tool
-
-            tool_handler = make_endpoint_func(endpoint_name, FormModel, session)
-        else:
-
-            def make_endpoint_func_no_args(
-                endpoint_name: str, session: ClientSession
-            ):  # Parameterless endpoint
-                async def tool():  # No parameters
-                    result = await session.call_tool(
-                        endpoint_name, arguments={}
-                    )  # Empty dict
-                    return process_tool_response(result)  # Same processor
-
-                return tool
-
-            tool_handler = make_endpoint_func_no_args(endpoint_name, session)
+        tool_handler = get_tool_handler(
+            session, endpoint_name, form_model_name, model_fields
+        )
 
         app.post(
             f"/{endpoint_name}",
             summary=endpoint_name.replace("_", " ").title(),
             description=endpoint_description,
+            response_model_exclude_none=True,
             dependencies=[Depends(api_dependency)] if api_dependency else [],
         )(tool_handler)
 
@@ -171,11 +107,13 @@ async def run(
     # MCP Config
     config_path = kwargs.get("config")
     server_command = kwargs.get("server_command")
+
     name = kwargs.get("name") or "MCP OpenAPI Proxy"
     description = (
         kwargs.get("description") or "Automatically generated API from MCP Tool Schemas"
     )
     version = kwargs.get("version") or "1.0"
+
     ssl_certfile = kwargs.get("ssl_certfile")
     ssl_keyfile = kwargs.get("ssl_keyfile")
     path_prefix = kwargs.get("path_prefix") or "/"
@@ -198,7 +136,6 @@ async def run(
     )
 
     if server_command:
-
         main_app.state.command = server_command[0]
         main_app.state.args = server_command[1:]
         main_app.state.env = os.environ.copy()
@@ -207,14 +144,16 @@ async def run(
     elif config_path:
         with open(config_path, "r") as f:
             config_data = json.load(f)
+
         mcp_servers = config_data.get("mcpServers", {})
         if not mcp_servers:
             raise ValueError("No 'mcpServers' found in config file.")
+
         main_app.description += "\n\n- **available tools**："
         for server_name, server_cfg in mcp_servers.items():
             sub_app = FastAPI(
                 title=f"{server_name}",
-                description=f"{server_name} MCP Server\n\n- [back to tool list](http://{host}:{port}/docs)",
+                description=f"{server_name} MCP Server\n\n- [back to tool list](/docs)",
                 version="1.0",
                 lifespan=lifespan,
             )
@@ -232,10 +171,9 @@ async def run(
             sub_app.state.env = {**os.environ, **server_cfg.get("env", {})}
 
             sub_app.state.api_dependency = api_dependency
+
             main_app.mount(f"{path_prefix}{server_name}", sub_app)
-            main_app.description += (
-                f"\n    - [{server_name}](http://{host}:{port}/{server_name}/docs)"
-            )
+            main_app.description += f"\n    - [{server_name}](/{server_name}/docs)"
     else:
         raise ValueError("You must provide either server_command or config.")
 

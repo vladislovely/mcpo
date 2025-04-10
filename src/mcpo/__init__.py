@@ -2,7 +2,7 @@ import sys
 import asyncio
 import typer
 import os
-
+from dotenv import load_dotenv
 
 from typing_extensions import Annotated
 from typing import Optional, List
@@ -28,6 +28,10 @@ def main(
     ] = None,
     env: Annotated[
         Optional[List[str]], typer.Option("--env", "-e", help="Environment variables")
+    ] = None,
+    env_path: Annotated[
+        Optional[str],
+        typer.Option("--env-path", help="Path to environment variables file"),
     ] = None,
     config: Annotated[
         Optional[str], typer.Option("--config", "-c", help="Config file path")
@@ -74,15 +78,23 @@ def main(
             f"Starting MCP OpenAPI Proxy on {host}:{port} with command: {' '.join(server_command)}"
         )
 
-    env_dict = {}
-    if env:
-        for var in env:
-            key, value = env.split("=", 1)
-            env_dict[key] = value
+    try:
+        env_dict = {}
+        if env:
+            for var in env:
+                key, value = var.split("=", 1)
+                env_dict[key] = value
 
-    # Set environment variables
-    for key, value in env_dict.items():
-        os.environ[key] = value
+        if env_path:
+            # Load environment variables from the specified file
+            load_dotenv(env_path)
+            env_dict.update(dict(os.environ))
+
+        # Set environment variables
+        for key, value in env_dict.items():
+            os.environ[key] = value
+    except Exception as e:
+        pass
 
     # Whatever the prefix is, make sure it starts and ends with a /
     if path_prefix is None:
