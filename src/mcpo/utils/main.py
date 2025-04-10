@@ -1,11 +1,17 @@
-from typing import Any, Dict, List, Type, Union, ForwardRef
-from pydantic import create_model, Field
+from typing import Any, Dict, List, Type, Union, ForwardRef, Optional
+from pydantic import BaseModel, create_model, Field
 from pydantic.fields import FieldInfo
 from mcp import ClientSession, types
 from mcp.types import CallToolResult
+from mcp.shared.exceptions import McpError
 
 import json
 
+
+class ToolResponse(BaseModel):
+    response: Optional[Any] = None
+    errorMessage: Optional[str] = None
+    errorData: Optional[Any] = None
 
 def process_tool_response(result: CallToolResult) -> list:
     """Universal response processor for all tool endpoints"""
@@ -63,7 +69,7 @@ def _process_schema_property(
         for name, schema in nested_properties.items():
             is_nested_required = name in nested_required
             nested_type_hint, nested_pydantic_field = _process_schema_property(
-                schema, nested_model_name, name, is_nested_required
+                _model_cache, schema, nested_model_name, name, is_nested_required
             )
 
             nested_fields[name] = (nested_type_hint, nested_pydantic_field)
@@ -84,6 +90,7 @@ def _process_schema_property(
 
         # Recursively determine the type of items in the array
         item_type_hint, _ = _process_schema_property(
+            _model_cache,
             items_schema,
             f"{model_name_prefix}_{prop_name}",
             "item",
@@ -126,13 +133,31 @@ def get_tool_handler(session, endpoint_name, form_model_name, model_fields):
         def make_endpoint_func(
             endpoint_name: str, FormModel, session: ClientSession
         ):  # Parameterized endpoint
-
-            async def tool(form_data: FormModel):
+            async def tool(form_data: FormModel) -> ToolResponse:
                 args = form_data.model_dump(exclude_none=True)
                 print(f"Calling endpoint: {endpoint_name}, with args: {args}")
+                try:
+                    result = await session.call_tool(endpoint_name, arguments=args)
 
-                result = await session.call_tool(endpoint_name, arguments=args)
-                return process_tool_response(result)
+                    if result.isError:
+                        errorMessage = "Unknown tool execution error"
+                        if result.content and isinstance(result.content[0], types.TextContent):
+                            errorMessage = result.content[0].text
+                        return ToolResponse(errorMessage=errorMessage)
+
+                    response_data = process_tool_response(result)
+                    final_response = response_data[0] if len(response_data) == 1 else response_data
+                    return ToolResponse(response=final_response)
+
+                except McpError as e:
+                    print(f"MCP Error calling {endpoint_name}: {e.error}")
+                    return ToolResponse(
+                        errorMessage=e.error.message,
+                        errorData=e.error.data,
+                    )
+                except Exception as e:
+                    print(f"Unexpected error calling {endpoint_name}: {e}")
+                    return ToolResponse(errorMessage=f"An unexpected internal error occurred: {e}")
 
             return tool
 
@@ -142,12 +167,33 @@ def get_tool_handler(session, endpoint_name, form_model_name, model_fields):
         def make_endpoint_func_no_args(
             endpoint_name: str, session: ClientSession
         ):  # Parameterless endpoint
-            async def tool():  # No parameters
+            async def tool() -> ToolResponse:  # No parameters
                 print(f"Calling endpoint: {endpoint_name}, with no args")
-                result = await session.call_tool(
-                    endpoint_name, arguments={}
-                )  # Empty dict
-                return process_tool_response(result)  # Same processor
+                try:
+                    result = await session.call_tool(
+                        endpoint_name, arguments={}
+                    )  # Empty dict
+
+                    if result.isError:
+                        error_message = "Unknown tool execution error"
+                        if result.content and isinstance(result.content[0], types.TextContent):
+                            error_message = result.content[0].text
+                        return ToolResponse(errorMessage=error_message)
+
+                    response_data = process_tool_response(result)
+                    final_response = response_data[0] if len(response_data) == 1 else response_data
+                    return ToolResponse(response=final_response)
+
+                except McpError as e:
+                    print(f"MCP Error calling {endpoint_name}: {e.error}")
+                    # Propagate the error received from MCP
+                    return ToolResponse(
+                        errorMessage=e.error.message,
+                        errorData=e.error.data,
+                    )
+                except Exception as e:
+                    print(f"Unexpected error calling {endpoint_name}: {e}")
+                    return ToolResponse(errorMessage=f"An unexpected internal error occurred: {e}")
 
             return tool
 
