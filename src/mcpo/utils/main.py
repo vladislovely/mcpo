@@ -152,3 +152,5 @@ def get_tool_handler(session, endpoint_name, form_model_name, model_fields):
             return tool
 
         tool_handler = make_endpoint_func_no_args(endpoint_name, session)
+
+    return tool_handler
