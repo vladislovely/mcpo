@@ -63,7 +63,7 @@ def _process_schema_property(
         for name, schema in nested_properties.items():
             is_nested_required = name in nested_required
             nested_type_hint, nested_pydantic_field = _process_schema_property(
-                schema, nested_model_name, name, is_nested_required
+                _model_cache, schema, nested_model_name, name, is_nested_required
             )
 
             nested_fields[name] = (nested_type_hint, nested_pydantic_field)
@@ -84,6 +84,7 @@ def _process_schema_property(
 
         # Recursively determine the type of items in the array
         item_type_hint, _ = _process_schema_property(
+            _model_cache,
             items_schema,
             f"{model_name_prefix}_{prop_name}",
             "item",
