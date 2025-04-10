@@ -13,7 +13,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 
-from mcpo.utils.main import get_model_fields, get_tool_handler, ToolResponse
+from mcpo.utils.main import get_model_fields, get_tool_handler
 from mcpo.utils.auth import get_verify_api_key
 
 
@@ -58,7 +58,6 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
             f"/{endpoint_name}",
             summary=endpoint_name.replace("_", " ").title(),
             description=endpoint_description,
-            response_model=ToolResponse,
             response_model_exclude_none=True,
             dependencies=[Depends(api_dependency)] if api_dependency else [],
         )(tool_handler)

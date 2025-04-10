@@ -1,5 +1,5 @@
-from typing import Any, Dict, List, Type, Union, ForwardRef, Optional
-from pydantic import BaseModel, create_model, Field
+from typing import Any, Dict, List, Type, Union, ForwardRef
+from pydantic import create_model, Field
 from pydantic.fields import FieldInfo
 from mcp import ClientSession, types
 from fastapi import HTTPException
@@ -16,11 +16,6 @@ MCP_ERROR_TO_HTTP_STATUS = {
     INTERNAL_ERROR: 500,
 }
 
-
-class ToolResponse(BaseModel):
-    response: Optional[Any] = None
-    errorMessage: Optional[str] = None
-    errorData: Optional[Any] = None
 
 def process_tool_response(result: CallToolResult) -> list:
     """Universal response processor for all tool endpoints"""
@@ -142,7 +137,7 @@ def get_tool_handler(session, endpoint_name, form_model_name, model_fields):
         def make_endpoint_func(
             endpoint_name: str, FormModel, session: ClientSession
         ):  # Parameterized endpoint
-            async def tool(form_data: FormModel) -> ToolResponse:
+            async def tool(form_data: FormModel):
                 args = form_data.model_dump(exclude_none=True)
                 print(f"Calling endpoint: {endpoint_name}, with args: {args}")
                 try:
@@ -164,7 +159,7 @@ def get_tool_handler(session, endpoint_name, form_model_name, model_fields):
 
                     response_data = process_tool_response(result)
                     final_response = response_data[0] if len(response_data) == 1 else response_data
-                    return ToolResponse(response=final_response)
+                    return final_response
 
                 except McpError as e:
                     print(f"MCP Error calling {endpoint_name}: {e.error}")
@@ -192,7 +187,7 @@ def get_tool_handler(session, endpoint_name, form_model_name, model_fields):
         def make_endpoint_func_no_args(
             endpoint_name: str, session: ClientSession
         ):  # Parameterless endpoint
-            async def tool() -> ToolResponse:  # No parameters
+            async def tool():  # No parameters
                 print(f"Calling endpoint: {endpoint_name}, with no args")
                 try:
                     result = await session.call_tool(
@@ -212,7 +207,7 @@ def get_tool_handler(session, endpoint_name, form_model_name, model_fields):
 
                     response_data = process_tool_response(result)
                     final_response = response_data[0] if len(response_data) == 1 else response_data
-                    return ToolResponse(response=final_response)
+                    return final_response
 
                 except McpError as e:
                     print(f"MCP Error calling {endpoint_name}: {e.error}")
