@@ -65,16 +65,18 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    server_type = getattr(app.state, "server_type", "stdio")
     command = getattr(app.state, "command", None)
     args = getattr(app.state, "args", [])
     env = getattr(app.state, "env", {})
 
-    mcptype = "sse" if command == "sse" else "stdio"
     args = args if isinstance(args, list) else [args]
-
     api_dependency = getattr(app.state, "api_dependency", None)
 
-    if (mcptype == "stdio" and not command) or (mcptype == "sse" and not args[0]):
+    if (server_type == "stdio" and not command) or (
+        server_type == "sse" and not args[0]
+    ):
+        # Main app lifespan (when config_path is provided)
         async with AsyncExitStack() as stack:
             for route in app.routes:
                 if isinstance(route, Mount) and isinstance(route.app, FastAPI):
@@ -82,9 +84,8 @@ async def lifespan(app: FastAPI):
                         route.app.router.lifespan_context(route.app),  # noqa
                     )
             yield
-
     else:
-        if mcptype == "stdio":
+        if server_type == "stdio":
             server_params = StdioServerParameters(
                 command=command,
                 args=args,
@@ -96,7 +97,7 @@ async def lifespan(app: FastAPI):
                     app.state.session = session
                     await create_dynamic_endpoints(app, api_dependency=api_dependency)
                     yield
-        if mcptype == "sse":
+        if server_type == "sse":
             async with sse_client(url=args[0]) as (reader, writer):
                 async with ClientSession(reader, writer) as session:
                     app.state.session = session
@@ -114,10 +115,14 @@ async def run(
     # Server API Key
     api_dependency = get_verify_api_key(api_key) if api_key else None
 
-    # MCP Config
-    config_path = kwargs.get("config")
+    # MCP Server
+    server_type = kwargs.get("server_type")  # "stdio" or "sse" or "http"
     server_command = kwargs.get("server_command")
 
+    # MCP Config
+    config_path = kwargs.get("config_path")
+
+    # mcpo server
     name = kwargs.get("name") or "MCP OpenAPI Proxy"
     description = (
         kwargs.get("description") or "Automatically generated API from MCP Tool Schemas"
@@ -145,12 +150,18 @@ async def run(
         allow_headers=["*"],
     )
 
-    if server_command:
+    if server_type == "sse":
+        main_app.state.server_type = "sse"
+        main_app.state.args = server_command[0]
+        main_app.state.api_dependency = api_dependency
+
+    elif server_command:
         main_app.state.command = server_command[0]
         main_app.state.args = server_command[1:]
         main_app.state.env = os.environ.copy()
 
         main_app.state.api_dependency = api_dependency
+
     elif config_path:
         with open(config_path, "r") as f:
             config_data = json.load(f)
@@ -183,7 +194,7 @@ async def run(
                 sub_app.state.env = {**os.environ, **server_cfg.get("env", {})}
             if server_cfg.get("url"):
                 # SSE
-                sub_app.state.command = "sse"
+                sub_app.state.server_type = "sse"
                 sub_app.state.args = server_cfg["url"]
 
             sub_app.state.api_dependency = api_dependency
