@@ -34,8 +34,8 @@ def main(
         typer.Option("--env-path", help="Path to environment variables file"),
     ] = None,
     server_type: Annotated[
-        Optional[str], typer.Option("--type", help="Server type")
-    ] = None,
+        Optional[str], typer.Option("--type", "--server-type", help="Server type")
+    ] = "stdio",
     config_path: Annotated[
         Optional[str], typer.Option("--config", "-c", help="Config file path")
     ] = None,

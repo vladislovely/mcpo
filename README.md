@@ -40,6 +40,12 @@ pip install mcpo
 mcpo --port 8000 --api-key "top-secret" -- your_mcp_server_command
 ```
 
+To use an SSE-compatible MCP server, simply specify the server type and endpoint:
+
+```bash
+mcpo --port 8000 --api-key "top-secret" --server-type "sse" -- http://127.0.0.1:8001/sse
+```
+
 You can also run mcpo via Docker with no installation:
 
 ```bash
@@ -78,7 +84,10 @@ Example config.json:
     "time": {
       "command": "uvx",
       "args": ["mcp-server-time", "--local-timezone=America/New_York"]
-    }
+    },
+    "mcp_sse": {
+      "url": "http://127.0.0.1:8001/sse"
+    } // SSE MCP Server
   }
 }
 ```
