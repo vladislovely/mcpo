@@ -224,3 +224,22 @@ def test_model_caching():
     )
     assert result_type3 == result_type1  # Should be the same cached object
     assert len(_model_cache) == 2  # Only two unique models created
+
+
+def test_multi_type_property():
+    schema = {"type": ["string", "number"], "description": "A property with multiple types"}
+    expected_field = Field(default=..., description="A property with multiple types")
+    result_type, result_field = _process_schema_property(
+        _model_cache, schema, "test", "multi_type", True
+    )
+
+    # Check if the resulting type is a Union
+    assert str(result_type).startswith("typing.Union[")
+
+    # Check if both types are in the Union
+    assert str in result_type.__args__
+    assert float in result_type.__args__
+
+    # Check field properties
+    assert result_field.default == expected_field.default
+    assert result_field.description == expected_field.description
