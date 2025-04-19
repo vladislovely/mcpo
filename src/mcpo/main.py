@@ -14,7 +14,7 @@ from mcp.client.stdio import stdio_client
 from mcp.client.sse import sse_client
 
 from mcpo.utils.main import get_model_fields, get_tool_handler
-from mcpo.utils.auth import get_verify_api_key
+from mcpo.utils.auth import get_verify_api_key, APIKeyMiddleware
 
 
 async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
@@ -114,6 +114,7 @@ async def run(
 ):
     # Server API Key
     api_dependency = get_verify_api_key(api_key) if api_key else None
+    strict_auth = kwargs.get("strict_auth", False)
 
     # MCP Server
     server_type = kwargs.get("server_type")  # "stdio" or "sse" or "http"
@@ -149,6 +150,10 @@ async def run(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Add middleware to protect also documentation and spec
+    if api_key and strict_auth:
+        main_app.add_middleware(APIKeyMiddleware, api_key=api_key)
 
     if server_type == "sse":
         main_app.state.server_type = "sse"
@@ -196,6 +201,10 @@ async def run(
                 # SSE
                 sub_app.state.server_type = "sse"
                 sub_app.state.args = server_cfg["url"]
+
+            # Add middleware to protect also documentation and spec
+            if api_key and strict_auth:
+                sub_app.add_middleware(APIKeyMiddleware, api_key=api_key)
 
             sub_app.state.api_dependency = api_dependency
 
