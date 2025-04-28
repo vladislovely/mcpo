@@ -3,7 +3,14 @@ from pydantic import create_model, Field
 from pydantic.fields import FieldInfo
 from mcp import ClientSession, types
 from fastapi import HTTPException
-from mcp.types import CallToolResult, PARSE_ERROR, INVALID_REQUEST, METHOD_NOT_FOUND, INVALID_PARAMS, INTERNAL_ERROR
+from mcp.types import (
+    CallToolResult,
+    PARSE_ERROR,
+    INVALID_REQUEST,
+    METHOD_NOT_FOUND,
+    INVALID_PARAMS,
+    INTERNAL_ERROR,
+)
 from mcp.shared.exceptions import McpError
 
 import json
@@ -57,6 +64,21 @@ def _process_schema_property(
     prop_desc = prop_schema.get("description", "")
     default_value = ... if is_required else prop_schema.get("default", None)
     pydantic_field = Field(default=default_value, description=prop_desc)
+
+    # Handle the case where prop_type is missing but 'anyOf' key exists
+    # In this case, use data type from 'anyOf' to determine the type hint
+    if "anyOf" in prop_schema:
+        type_hints = []
+        for i, schema_option in enumerate(prop_schema["anyOf"]):
+            type_hint, _ = _process_schema_property(
+                _model_cache,
+                schema_option,
+                f"{model_name_prefix}_{prop_name}",
+                f"choice_{i}",
+                False,
+            )
+            type_hints.append(type_hint)
+        return Union[tuple(type_hints)], pydantic_field
 
     # Handle the case where prop_type is a list of types, e.g. ['string', 'number']
     if isinstance(prop_type, list):
@@ -127,6 +149,8 @@ def _process_schema_property(
         return bool, pydantic_field
     elif prop_type == "number":
         return float, pydantic_field
+    elif prop_type == "null":
+        return None, pydantic_field
     else:
         return Any, pydantic_field
 
@@ -174,7 +198,9 @@ def get_tool_handler(session, endpoint_name, form_model_name, model_fields):
                         )
 
                     response_data = process_tool_response(result)
-                    final_response = response_data[0] if len(response_data) == 1 else response_data
+                    final_response = (
+                        response_data[0] if len(response_data) == 1 else response_data
+                    )
                     return final_response
 
                 except McpError as e:
@@ -222,7 +248,9 @@ def get_tool_handler(session, endpoint_name, form_model_name, model_fields):
                         )
 
                     response_data = process_tool_response(result)
-                    final_response = response_data[0] if len(response_data) == 1 else response_data
+                    final_response = (
+                        response_data[0] if len(response_data) == 1 else response_data
+                    )
                     return final_response
 
                 except McpError as e:
