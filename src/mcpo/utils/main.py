@@ -72,6 +72,22 @@ def _process_schema_property(
     default_value = ... if is_required else prop_schema.get("default", None)
     pydantic_field = Field(default=default_value, description=prop_desc)
 
+    # Handle the case where prop_type is a list of types, e.g. ['string', 'number']
+    if isinstance(prop_type, list):
+        # Create a Union of all the types
+        type_hints = []
+        for type_option in prop_type:
+            # Create a temporary schema with the single type and process it
+            temp_schema = dict(prop_schema)
+            temp_schema["type"] = type_option
+            type_hint, _ = _process_schema_property(
+                _model_cache, temp_schema, model_name_prefix, prop_name, False
+            )
+            type_hints.append(type_hint)
+
+        # Return a Union of all possible types
+        return Union[tuple(type_hints)], pydantic_field
+
     if prop_type == "object":
         nested_properties = prop_schema.get("properties", {})
         nested_required = prop_schema.get("required", [])
