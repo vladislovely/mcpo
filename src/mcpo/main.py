@@ -36,32 +36,34 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
     for tool in tools:
         endpoint_name = tool.name
         endpoint_description = tool.description
+
         inputSchema = tool.inputSchema
         outputSchema = getattr(tool, "outputSchema", None)
 
-        custom_fileds = inputSchema.get("$defs", {})
-        required_fields = inputSchema.get("required", [])
-        properties = inputSchema.get("properties", {})
         form_model_name = f"{endpoint_name}_form_model"
-        model_fields = get_model_fields(
+        form_model_fields = get_model_fields(
             form_model_name,
-            properties,
-            required_fields,
-            custom_fileds,
+            inputSchema.get("properties", {}),
+            inputSchema.get("required", []),
+            inputSchema.get("$defs", {}),
         )
+
+        response_model_fields = None
         if outputSchema:
-            output_model_name = f"{endpoint_name}_output_model"
-            output_model_fields = get_model_fields(
-                output_model_name,
+            response_model_name = f"{endpoint_name}_response_model"
+            response_model_fields = get_model_fields(
+                response_model_name,
                 outputSchema.get("properties", {}),
                 outputSchema.get("required", []),
                 outputSchema.get("$defs", {}),
             )
-        else:
-            output_model_fields = None
 
         tool_handler = get_tool_handler(
-            session, endpoint_name, form_model_name, model_fields, output_model_fields
+            session,
+            endpoint_name,
+            form_model_name,
+            form_model_fields,
+            response_model_fields,
         )
 
         app.post(

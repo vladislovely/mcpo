@@ -54,7 +54,7 @@ def _process_schema_property(
     model_name_prefix: str,
     prop_name: str,
     is_required: bool,
-    custom_fields: Optional[Dict] = None,
+    schema_defs: Optional[Dict] = None,
 ) -> tuple[Union[Type, List, ForwardRef, Any], FieldInfo]:
     """
     Recursively processes a schema property to determine its Python type hint
@@ -67,11 +67,12 @@ def _process_schema_property(
     if "$ref" in prop_schema:
         ref = prop_schema["$ref"]
         ref = ref.split("/")[-1]
-        assert ref in custom_fields, "Custom field not found"
-        prop_schema = custom_fields[ref]
+        assert ref in schema_defs, "Custom field not found"
+        prop_schema = schema_defs[ref]
 
     prop_type = prop_schema.get("type")
     prop_desc = prop_schema.get("description", "")
+
     default_value = ... if is_required else prop_schema.get("default", None)
     pydantic_field = Field(default=default_value, description=prop_desc)
 
@@ -126,7 +127,7 @@ def _process_schema_property(
                 nested_model_name,
                 name,
                 is_nested_required,
-                custom_fields,
+                schema_defs,
             )
 
             nested_fields[name] = (nested_type_hint, nested_pydantic_field)
@@ -152,7 +153,7 @@ def _process_schema_property(
             f"{model_name_prefix}_{prop_name}",
             "item",
             False,  # Items aren't required at this level,
-            custom_fields,
+            schema_defs,
         )
         list_type_hint = List[item_type_hint]
         return list_type_hint, pydantic_field
@@ -171,7 +172,7 @@ def _process_schema_property(
         return Any, pydantic_field
 
 
-def get_model_fields(form_model_name, properties, required_fields, custom_fields=None):
+def get_model_fields(form_model_name, properties, required_fields, schema_defs=None):
     model_fields = {}
 
     _model_cache: Dict[str, Type] = {}
@@ -184,7 +185,7 @@ def get_model_fields(form_model_name, properties, required_fields, custom_fields
             form_model_name,
             param_name,
             is_required,
-            custom_fields,
+            schema_defs,
         )
         # Use the generated type hint and Field info
         model_fields[param_name] = (python_type_hint, pydantic_field_info)
@@ -192,20 +193,24 @@ def get_model_fields(form_model_name, properties, required_fields, custom_fields
 
 
 def get_tool_handler(
-    session, endpoint_name, form_model_name, model_fields, output_model_fileds=None
+    session,
+    endpoint_name,
+    form_model_name,
+    form_model_fields,
+    response_model_fields=None,
 ):
-    if model_fields:
-        FormModel = create_model(form_model_name, **model_fields)
-        OutputModel = (
-            create_model(f"{endpoint_name}_output_model", **output_model_fileds)
-            if output_model_fileds
+    if form_model_fields:
+        FormModel = create_model(form_model_name, **form_model_fields)
+        ResponseModel = (
+            create_model(f"{endpoint_name}_response_model", **response_model_fields)
+            if response_model_fields
             else Any
         )
 
         def make_endpoint_func(
             endpoint_name: str, FormModel, session: ClientSession
         ):  # Parameterized endpoint
-            async def tool(form_data: FormModel) -> OutputModel:
+            async def tool(form_data: FormModel) -> ResponseModel:
                 args = form_data.model_dump(exclude_none=True)
                 print(f"Calling endpoint: {endpoint_name}, with args: {args}")
                 try:
