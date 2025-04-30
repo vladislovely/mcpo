@@ -40,9 +40,8 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
         inputSchema = tool.inputSchema
         outputSchema = getattr(tool, "outputSchema", None)
 
-        form_model_name = f"{endpoint_name}_form_model"
         form_model_fields = get_model_fields(
-            form_model_name,
+            f"{endpoint_name}_form_model",
             inputSchema.get("properties", {}),
             inputSchema.get("required", []),
             inputSchema.get("$defs", {}),
@@ -50,9 +49,8 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
 
         response_model_fields = None
         if outputSchema:
-            response_model_name = f"{endpoint_name}_response_model"
             response_model_fields = get_model_fields(
-                response_model_name,
+                f"{endpoint_name}_response_model",
                 outputSchema.get("properties", {}),
                 outputSchema.get("required", []),
                 outputSchema.get("$defs", {}),
@@ -61,7 +59,6 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
         tool_handler = get_tool_handler(
             session,
             endpoint_name,
-            form_model_name,
             form_model_fields,
             response_model_fields,
         )

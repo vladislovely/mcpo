@@ -195,12 +195,11 @@ def get_model_fields(form_model_name, properties, required_fields, schema_defs=N
 def get_tool_handler(
     session,
     endpoint_name,
-    form_model_name,
     form_model_fields,
     response_model_fields=None,
 ):
     if form_model_fields:
-        FormModel = create_model(form_model_name, **form_model_fields)
+        FormModel = create_model(f"{endpoint_name}_form_model", **form_model_fields)
         ResponseModel = (
             create_model(f"{endpoint_name}_response_model", **response_model_fields)
             if response_model_fields
