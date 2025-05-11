@@ -205,23 +205,17 @@ async def run(
         main_app.add_middleware(APIKeyMiddleware, api_key=api_key)
 
     if server_type == "sse":
-        logger.info("Configuring for a single SSE MCP Server:")
-        logger.info(f"  Type: SSE")
-        logger.info(f"  URL: {server_command[0]}")
+        logger.info(f"Configuring for a single SSE MCP Server with URL {server_command[0]}")
         main_app.state.server_type = "sse"
         main_app.state.args = server_command[0] # Expects URL as the first element
         main_app.state.api_dependency = api_dependency
     elif server_type == "streamablehttp":
-        logger.info("Configuring for a single StreamableHTTP MCP Server:")
-        logger.info(f"  Type: StreamableHTTP")
-        logger.info(f"  URL: {server_command[0]}")
+        logger.info(f"Configuring for a single StreamableHTTP MCP Server with URL {server_command[0]}")
         main_app.state.server_type = "streamablehttp"
         main_app.state.args = server_command[0] # Expects URL as the first element
         main_app.state.api_dependency = api_dependency
     elif server_command: # This handles stdio
-        logger.info("Configuring for a single Stdio MCP Server:")
-        logger.info(f"  Type: Stdio")
-        logger.info(f"  Command: {' '.join(server_command)}")
+        logger.info(f"Configuring for a single Stdio MCP Server with command: {' '.join(server_command)}")
         main_app.state.server_type = "stdio" # Explicitly set type
         main_app.state.command = server_command[0]
         main_app.state.args = server_command[1:]
@@ -239,23 +233,17 @@ async def run(
         
         logger.info("Configured MCP Servers:")
         for server_name_cfg, server_cfg_details in mcp_servers.items():
-            logger.info(f"  Server Name: {server_name_cfg}")
             if server_cfg_details.get("command"):
-                logger.info(f"    Type: Stdio")
-                logger.info(f"    Command: {server_cfg_details['command']}")
-                if server_cfg_details.get("args"):
-                    logger.info(f"    Args: {server_cfg_details['args']}")
+                args_info = f" with args: {server_cfg_details['args']}" if server_cfg_details.get("args") else ""
+                logger.info(f"  Configuring Stdio MCP Server '{server_name_cfg}' with command: {server_cfg_details['command']}{args_info}")
             elif server_cfg_details.get("type") == "sse" and server_cfg_details.get("url"):
-                logger.info(f"    Type: SSE")
-                logger.info(f"    URL: {server_cfg_details['url']}")
+                logger.info(f"  Configuring SSE MCP Server '{server_name_cfg}' with URL: {server_cfg_details['url']}")
             elif server_cfg_details.get("type") == "streamablehttp" and server_cfg_details.get("url"):
-                logger.info(f"    Type: StreamableHTTP")
-                logger.info(f"    URL: {server_cfg_details['url']}")
+                logger.info(f"  Configuring StreamableHTTP MCP Server '{server_name_cfg}' with URL: {server_cfg_details['url']}")
             elif server_cfg_details.get("url"): # Fallback for old SSE config
-                logger.info(f"    Type: SSE (fallback)")
-                logger.info(f"    URL: {server_cfg_details['url']}")
+                logger.info(f"  Configuring SSE (fallback) MCP Server '{server_name_cfg}' with URL: {server_cfg_details['url']}")
             else:
-                logger.warning(f"    Unknown configuration for server: {server_name_cfg}")
+                logger.warning(f"  Unknown configuration for MCP server: {server_name_cfg}")
 
 
         main_app.description += "\n\n- **available tools**："
