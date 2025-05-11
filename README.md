@@ -133,6 +133,25 @@ To contribute or run tests locally:
     uv run pytest
     ```
 
+3.  **Running Locally with Active Changes:**
+
+    To run `mcpo` with your local modifications from a specific branch (e.g., `my-feature-branch`):
+
+    ```bash
+    # Ensure you are on your development branch
+    git checkout my-feature-branch
+
+    # Make your code changes in the src/mcpo directory or elsewhere
+
+    # Run mcpo using uv, which will use your local, modified code
+    # This command starts mcpo on port 8000 and proxies your_mcp_server_command
+    uv run mcpo --port 8000 -- your_mcp_server_command
+
+    # Example with a test MCP server (like mcp-server-time):
+    # uv run mcpo --port 8000 -- uvx mcp-server-time --local-timezone=America/New_York
+    ```
+    This allows you to test your changes interactively before committing or creating a pull request. Access your locally running `mcpo` instance at `http://localhost:8000` and the auto-generated docs at `http://localhost:8000/docs`.
+
 
 ## 🪪 License
 

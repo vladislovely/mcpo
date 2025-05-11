@@ -56,7 +56,7 @@ def main(
         Optional[str], typer.Option("--ssl-certfile", "-t", help="SSL certfile")
     ] = None,
     ssl_keyfile: Annotated[
-        Optional[str], typer.Option("--ssl-keyfile", "-k", help="SSL keyfile")
+        Optional[str], typer.Option("--ssl-keyfile", "-K", help="SSL keyfile")
     ] = None,
     path_prefix: Annotated[
         Optional[str], typer.Option("--path-prefix", help="URL prefix")
