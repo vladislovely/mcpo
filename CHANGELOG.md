@@ -12,6 +12,12 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog,
 and this project adheres to Semantic Versioning.
 
+## [0.0.14] - 2025-05-11
+
+### Added
+
+- 🌐 **Streamable HTTP Transport Support**: mcpo now supports MCP servers using the Streamable HTTP transport. This allows for more flexible and robust communication, including session management and resumable streams. Configure via CLI with `--server-type "streamable_http" -- <URL>` or in the config file with `type: "streamable_http"` and a `url`.
+
 ## [0.0.13] - 2025-05-01
 
 ### Added

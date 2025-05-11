@@ -46,6 +46,12 @@ To use an SSE-compatible MCP server, simply specify the server type and endpoint
 mcpo --port 8000 --api-key "top-secret" --server-type "sse" -- http://127.0.0.1:8001/sse
 ```
 
+To use a Streamable HTTP-compatible MCP server, specify the server type and endpoint:
+
+```bash
+mcpo --port 8000 --api-key "top-secret" --server-type "streamable_http" -- http://127.0.0.1:8002/mcp
+```
+
 You can also run mcpo via Docker with no installation:
 
 ```bash
@@ -86,8 +92,13 @@ Example config.json:
       "args": ["mcp-server-time", "--local-timezone=America/New_York"]
     },
     "mcp_sse": {
+      "type": "sse", // Explicitly define type
       "url": "http://127.0.0.1:8001/sse"
-    } // SSE MCP Server
+    },
+    "mcp_streamable_http": {
+      "type": "streamable_http",
+      "url": "http://127.0.0.1:8002/mcp"
+    } // Streamable HTTP MCP Server
   }
 }
 ```
@@ -121,6 +132,25 @@ To contribute or run tests locally:
     ```bash
     uv run pytest
     ```
+
+3.  **Running Locally with Active Changes:**
+
+    To run `mcpo` with your local modifications from a specific branch (e.g., `my-feature-branch`):
+
+    ```bash
+    # Ensure you are on your development branch
+    git checkout my-feature-branch
+
+    # Make your code changes in the src/mcpo directory or elsewhere
+
+    # Run mcpo using uv, which will use your local, modified code
+    # This command starts mcpo on port 8000 and proxies your_mcp_server_command
+    uv run mcpo --port 8000 -- your_mcp_server_command
+
+    # Example with a test MCP server (like mcp-server-time):
+    # uv run mcpo --port 8000 -- uvx mcp-server-time --local-timezone=America/New_York
+    ```
+    This allows you to test your changes interactively before committing or creating a pull request. Access your locally running `mcpo` instance at `http://localhost:8000` and the auto-generated docs at `http://localhost:8000/docs`.
 
 
 ## 🪪 License
