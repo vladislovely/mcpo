@@ -107,7 +107,7 @@ async def lifespan(app: FastAPI):
             server_params = StdioServerParameters(
                 command=command,
                 args=args,
-                env={**env},
+                env={**os.environ, **env},
             )
 
             async with stdio_client(server_params) as (reader, writer):
