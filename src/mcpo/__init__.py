@@ -28,7 +28,9 @@ def main(
     ] = None,
     strict_auth: Annotated[
         Optional[bool],
-        typer.Option("--strict-auth", help="API key protects all endpoints and documentation"),
+        typer.Option(
+            "--strict-auth", help="API key protects all endpoints and documentation"
+        ),
     ] = False,
     env: Annotated[
         Optional[List[str]], typer.Option("--env", "-e", help="Environment variables")
@@ -60,6 +62,9 @@ def main(
     ] = None,
     path_prefix: Annotated[
         Optional[str], typer.Option("--path-prefix", help="URL prefix")
+    ] = None,
+    headers: Annotated[
+        Optional[str], typer.Option("--header", "-H", help="Headers in JSON format")
     ] = None,
 ):
     server_command = None
@@ -131,6 +136,7 @@ def main(
             ssl_certfile=ssl_certfile,
             ssl_keyfile=ssl_keyfile,
             path_prefix=path_prefix,
+            headers=headers,
         )
     )
 
