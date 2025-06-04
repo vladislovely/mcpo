@@ -130,7 +130,23 @@ def _process_schema_property(
                 schema_defs,
             )
 
-            nested_fields[name] = (nested_type_hint, nested_pydantic_field)
+            # Handle nested field names with leading underscores
+            if name.startswith('__'):
+                clean_name = name.lstrip('_')
+                # Handle potential naming conflicts
+                original_clean_name = clean_name
+                suffix_counter = 1
+                while clean_name in nested_properties or clean_name in nested_fields:
+                    clean_name = f"{original_clean_name}_{suffix_counter}"
+                    suffix_counter += 1
+                aliased_field = Field(
+                    default=nested_pydantic_field.default,
+                    description=nested_pydantic_field.description,
+                    alias=name
+                )
+                nested_fields[clean_name] = (nested_type_hint, aliased_field)
+            else:
+                nested_fields[name] = (nested_type_hint, nested_pydantic_field)
 
         if not nested_fields:
             return Dict[str, Any], pydantic_field
@@ -187,8 +203,25 @@ def get_model_fields(form_model_name, properties, required_fields, schema_defs=N
             is_required,
             schema_defs,
         )
-        # Use the generated type hint and Field info
-        model_fields[param_name] = (python_type_hint, pydantic_field_info)
+
+        # Handle parameter names with leading underscores (e.g., __top, __filter) which Pydantic v2 does not allow
+        if param_name.startswith('__'):
+            clean_name = param_name.lstrip('_')
+            # Handle potential naming conflicts
+            original_clean_name = clean_name
+            suffix_counter = 1
+            while clean_name in properties or clean_name in model_fields:
+                clean_name = f"{original_clean_name}_{suffix_counter}"
+                suffix_counter += 1
+            aliased_field = Field(
+                default=pydantic_field_info.default,
+                description=pydantic_field_info.description,
+                alias=param_name
+            )
+            model_fields[clean_name] = (python_type_hint, aliased_field)
+        else:
+            model_fields[param_name] = (python_type_hint, pydantic_field_info)
+
     return model_fields
 
 
@@ -210,7 +243,7 @@ def get_tool_handler(
             endpoint_name: str, FormModel, session: ClientSession
         ):  # Parameterized endpoint
             async def tool(form_data: FormModel) -> ResponseModel:
-                args = form_data.model_dump(exclude_none=True)
+                args = form_data.model_dump(exclude_none=True, by_alias=True)
                 print(f"Calling endpoint: {endpoint_name}, with args: {args}")
                 try:
                     result = await session.call_tool(endpoint_name, arguments=args)
