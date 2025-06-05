@@ -226,10 +226,8 @@ def get_model_fields(form_model_name, properties, required_fields, schema_defs=N
 
         # Handle parameter names with leading underscores (e.g., __top, __filter) which Pydantic v2 does not allow
         if name_needs_alias(param_name):
-            print(f"DEBUG: Handling underscore parameter: {param_name}")
             other_names = set().union(properties, model_fields, _model_cache)
             alias_name = generate_alias_name(param_name, other_names)
-            print(f"DEBUG: Clean name for {param_name} is {alias_name}")
             aliased_field = Field(
                 default=pydantic_field_info.default,
                 description=pydantic_field_info.description,
