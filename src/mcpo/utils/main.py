@@ -1,4 +1,5 @@
 import json
+import traceback
 from typing import Any, Dict, ForwardRef, List, Optional, Type, Union
 
 from fastapi import HTTPException
@@ -46,6 +47,32 @@ def process_tool_response(result: CallToolResult) -> list:
             # TODO: Handle embedded resources
             response.append("Embedded resource not supported yet.")
     return response
+
+
+def name_needs_alias(name: str) -> bool:
+    """Check if a field name needs aliasing (for now if it starts with '__')."""
+    return name.startswith('__')
+
+
+def generate_alias_name(original_name: str, existing_names: set) -> str:
+    """
+    Generate an alias field name by stripping unwanted chars, and avoiding conflicts with existing names.
+
+    Args:
+        original_name: The original field name (should start with '__')
+        existing_names: Set of existing names to avoid conflicts with
+
+    Returns:
+        An alias name that doesn't conflict with existing names
+    """
+    alias_name = original_name.lstrip('_')
+    # Handle potential naming conflicts
+    original_alias_name = alias_name
+    suffix_counter = 1
+    while alias_name in existing_names:
+        alias_name = f"{original_alias_name}_{suffix_counter}"
+        suffix_counter += 1
+    return alias_name
 
 
 def _process_schema_property(
@@ -130,7 +157,17 @@ def _process_schema_property(
                 schema_defs,
             )
 
-            nested_fields[name] = (nested_type_hint, nested_pydantic_field)
+            if name_needs_alias(name):
+                other_names = set().union(nested_properties, nested_fields, _model_cache)
+                alias_name = generate_alias_name(name, other_names)
+                aliased_field = Field(
+                    default=nested_pydantic_field.default,
+                    description=nested_pydantic_field.description,
+                    alias=name
+                )
+                nested_fields[alias_name] = (nested_type_hint, aliased_field)
+            else:
+                nested_fields[name] = (nested_type_hint, nested_pydantic_field)
 
         if not nested_fields:
             return Dict[str, Any], pydantic_field
@@ -187,8 +224,21 @@ def get_model_fields(form_model_name, properties, required_fields, schema_defs=N
             is_required,
             schema_defs,
         )
-        # Use the generated type hint and Field info
-        model_fields[param_name] = (python_type_hint, pydantic_field_info)
+
+        # Handle parameter names with leading underscores (e.g., __top, __filter) which Pydantic v2 does not allow
+        if name_needs_alias(param_name):
+            other_names = set().union(properties, model_fields, _model_cache)
+            alias_name = generate_alias_name(param_name, other_names)
+            aliased_field = Field(
+                default=pydantic_field_info.default,
+                description=pydantic_field_info.description,
+                alias=param_name
+            )
+            # Use the generated type hint and Field info
+            model_fields[alias_name] = (python_type_hint, aliased_field)
+        else:
+            model_fields[param_name] = (python_type_hint, pydantic_field_info)
+
     return model_fields
 
 
@@ -210,7 +260,7 @@ def get_tool_handler(
             endpoint_name: str, FormModel, session: ClientSession
         ):  # Parameterized endpoint
             async def tool(form_data: FormModel) -> ResponseModel:
-                args = form_data.model_dump(exclude_none=True)
+                args = form_data.model_dump(exclude_none=True, by_alias=True)
                 print(f"Calling endpoint: {endpoint_name}, with args: {args}")
                 try:
                     result = await session.call_tool(endpoint_name, arguments=args)
@@ -236,7 +286,9 @@ def get_tool_handler(
                     return final_response
 
                 except McpError as e:
-                    print(f"MCP Error calling {endpoint_name}: {e.error}")
+                    print(
+                        f"MCP Error calling {endpoint_name}: {traceback.format_exc()}"
+                    )
                     status_code = MCP_ERROR_TO_HTTP_STATUS.get(e.error.code, 500)
                     raise HTTPException(
                         status_code=status_code,
@@ -247,7 +299,9 @@ def get_tool_handler(
                         ),
                     )
                 except Exception as e:
-                    print(f"Unexpected error calling {endpoint_name}: {e}")
+                    print(
+                        f"Unexpected error calling {endpoint_name}: {traceback.format_exc()}"
+                    )
                     raise HTTPException(
                         status_code=500,
                         detail={"message": "Unexpected error", "error": str(e)},
@@ -286,7 +340,9 @@ def get_tool_handler(
                     return final_response
 
                 except McpError as e:
-                    print(f"MCP Error calling {endpoint_name}: {e.error}")
+                    print(
+                        f"MCP Error calling {endpoint_name}: {traceback.format_exc()}"
+                    )
                     status_code = MCP_ERROR_TO_HTTP_STATUS.get(e.error.code, 500)
                     # Propagate the error received from MCP as an HTTP exception
                     raise HTTPException(
@@ -298,7 +354,9 @@ def get_tool_handler(
                         ),
                     )
                 except Exception as e:
-                    print(f"Unexpected error calling {endpoint_name}: {e}")
+                    print(
+                        f"Unexpected error calling {endpoint_name}: {traceback.format_exc()}"
+                    )
                     raise HTTPException(
                         status_code=500,
                         detail={"message": "Unexpected error", "error": str(e)},

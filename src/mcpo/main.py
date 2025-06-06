@@ -36,6 +36,10 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
         )
         app.version = server_info.version or app.version
 
+    instructions = getattr(result, "instructions", None)
+    if instructions:
+        app.description = instructions
+
     tools_result = await session.list_tools()
     tools = tools_result.tools
 
@@ -104,7 +108,7 @@ async def lifespan(app: FastAPI):
             server_params = StdioServerParameters(
                 command=command,
                 args=args,
-                env={**env},
+                env={**os.environ, **env},
             )
 
             async with stdio_client(server_params) as (reader, writer):
@@ -113,7 +117,10 @@ async def lifespan(app: FastAPI):
                     await create_dynamic_endpoints(app, api_dependency=api_dependency)
                     yield
         if server_type == "sse":
-            async with sse_client(url=args[0], sse_read_timeout=None) as (
+            headers = getattr(app.state, "headers", None)
+            async with sse_client(
+                url=args[0], sse_read_timeout=None, headers=headers
+            ) as (
                 reader,
                 writer,
             ):
@@ -122,13 +129,15 @@ async def lifespan(app: FastAPI):
                     await create_dynamic_endpoints(app, api_dependency=api_dependency)
                     yield
         if server_type == "streamablehttp" or server_type == "streamable_http":
+            headers = getattr(app.state, "headers", None)
+
             # Ensure URL has trailing slash to avoid redirects
             url = args[0]
             if not url.endswith("/"):
                 url = f"{url}/"
 
             # Connect using streamablehttp_client from the SDK, similar to sse_client
-            async with streamablehttp_client(url=url) as (
+            async with streamablehttp_client(url=url, headers=headers) as (
                 reader,
                 writer,
                 _,  # get_session_id callback not needed for ClientSession
@@ -209,6 +218,14 @@ async def run(
     if api_key and strict_auth:
         main_app.add_middleware(APIKeyMiddleware, api_key=api_key)
 
+    headers = kwargs.get("headers")
+    if headers and isinstance(headers, str):
+        try:
+            headers = json.loads(headers)
+        except json.JSONDecodeError:
+            print("Warning: Invalid JSON format for headers. Headers will be ignored.")
+            headers = None
+
     if server_type == "sse":
         logger.info(
             f"Configuring for a single SSE MCP Server with URL {server_command[0]}"
@@ -216,6 +233,7 @@ async def run(
         main_app.state.server_type = "sse"
         main_app.state.args = server_command[0]  # Expects URL as the first element
         main_app.state.api_dependency = api_dependency
+        main_app.state.headers = headers
     elif server_type == "streamablehttp" or server_type == "streamable_http":
         logger.info(
             f"Configuring for a single StreamableHTTP MCP Server with URL {server_command[0]}"
@@ -223,6 +241,7 @@ async def run(
         main_app.state.server_type = "streamablehttp"
         main_app.state.args = server_command[0]  # Expects URL as the first element
         main_app.state.api_dependency = api_dependency
+        main_app.state.headers = headers
     elif server_command:  # This handles stdio
         logger.info(
             f"Configuring for a single Stdio MCP Server with command: {' '.join(server_command)}"
@@ -303,6 +322,7 @@ async def run(
             if server_config_type == "sse" and server_cfg.get("url"):
                 sub_app.state.server_type = "sse"
                 sub_app.state.args = server_cfg["url"]
+                sub_app.state.headers = server_cfg.get("headers")
             elif (
                 server_config_type == "streamablehttp"
                 or server_config_type == "streamable_http"
@@ -313,11 +333,14 @@ async def run(
                     url = f"{url}/"
                 sub_app.state.server_type = "streamablehttp"
                 sub_app.state.args = url
+                sub_app.state.headers = server_cfg.get("headers")
+
             elif not server_config_type and server_cfg.get(
                 "url"
             ):  # Fallback for old SSE config
                 sub_app.state.server_type = "sse"
                 sub_app.state.args = server_cfg["url"]
+                sub_app.state.headers = server_cfg.get("headers")
 
             # Add middleware to protect also documentation and spec
             if api_key and strict_auth:

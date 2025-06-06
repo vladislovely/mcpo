@@ -46,6 +46,12 @@ To use an SSE-compatible MCP server, simply specify the server type and endpoint
 mcpo --port 8000 --api-key "top-secret" --server-type "sse" -- http://127.0.0.1:8001/sse
 ```
 
+You can also provide headers for the SSE connection:
+
+```bash
+mcpo --port 8000 --api-key "top-secret" --server-type "sse" --headers '{"Authorization": "Bearer token", "X-Custom-Header": "value"}' -- http://127.0.0.1:8001/sse
+```
+
 To use a Streamable HTTP-compatible MCP server, specify the server type and endpoint:
 
 ```bash
@@ -93,7 +99,11 @@ Example config.json:
     },
     "mcp_sse": {
       "type": "sse", // Explicitly define type
-      "url": "http://127.0.0.1:8001/sse"
+      "url": "http://127.0.0.1:8001/sse",
+      "headers": {
+        "Authorization": "Bearer token",
+        "X-Custom-Header": "value"
+      }
     },
     "mcp_streamable_http": {
       "type": "streamable_http",
