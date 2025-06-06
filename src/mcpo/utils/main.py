@@ -1,4 +1,5 @@
 import json
+import traceback
 from typing import Any, Dict, ForwardRef, List, Optional, Type, Union
 
 from fastapi import HTTPException
@@ -285,7 +286,9 @@ def get_tool_handler(
                     return final_response
 
                 except McpError as e:
-                    print(f"MCP Error calling {endpoint_name}: {e.error}")
+                    print(
+                        f"MCP Error calling {endpoint_name}: {traceback.format_exc()}"
+                    )
                     status_code = MCP_ERROR_TO_HTTP_STATUS.get(e.error.code, 500)
                     raise HTTPException(
                         status_code=status_code,
@@ -296,7 +299,9 @@ def get_tool_handler(
                         ),
                     )
                 except Exception as e:
-                    print(f"Unexpected error calling {endpoint_name}: {e}")
+                    print(
+                        f"Unexpected error calling {endpoint_name}: {traceback.format_exc()}"
+                    )
                     raise HTTPException(
                         status_code=500,
                         detail={"message": "Unexpected error", "error": str(e)},
@@ -335,7 +340,9 @@ def get_tool_handler(
                     return final_response
 
                 except McpError as e:
-                    print(f"MCP Error calling {endpoint_name}: {e.error}")
+                    print(
+                        f"MCP Error calling {endpoint_name}: {traceback.format_exc()}"
+                    )
                     status_code = MCP_ERROR_TO_HTTP_STATUS.get(e.error.code, 500)
                     # Propagate the error received from MCP as an HTTP exception
                     raise HTTPException(
@@ -347,7 +354,9 @@ def get_tool_handler(
                         ),
                     )
                 except Exception as e:
-                    print(f"Unexpected error calling {endpoint_name}: {e}")
+                    print(
+                        f"Unexpected error calling {endpoint_name}: {traceback.format_exc()}"
+                    )
                     raise HTTPException(
                         status_code=500,
                         detail={"message": "Unexpected error", "error": str(e)},
