@@ -276,7 +276,7 @@ def get_tool_handler(
         def make_endpoint_func(
             endpoint_name: str, FormModel, session: ClientSession
         ):  # Parameterized endpoint
-            async def tool(form_data: FormModel) -> ResponseModel:
+            async def tool(form_data: FormModel) -> Union[ResponseModel, Any]:
                 args = form_data.model_dump(exclude_none=True, by_alias=True)
                 logger.info(f"Calling endpoint: {endpoint_name}, with args: {args}")
                 try:
