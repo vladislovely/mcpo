@@ -105,6 +105,7 @@ async def call_tool_with_forwarded_auth(
         if server_type == "sse":
             async with sse_client(url=app.state.args, headers=headers) as (reader, writer):
                 async with ClientSession(reader, writer) as temp_session:
+                    await temp_session.initialize()
                     return await temp_session.call_tool(endpoint_name, arguments=arguments)
         else:
             url = app.state.args
@@ -116,6 +117,7 @@ async def call_tool_with_forwarded_auth(
                 _,
             ):
                 async with ClientSession(reader, writer) as temp_session:
+                    await temp_session.initialize()
                     return await temp_session.call_tool(endpoint_name, arguments=arguments)
 
     return await session.call_tool(endpoint_name, arguments=arguments)
