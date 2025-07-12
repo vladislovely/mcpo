@@ -2,7 +2,9 @@ import json
 import traceback
 from typing import Any, Dict, ForwardRef, List, Optional, Type, Union
 import logging
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
+from mcp.client.sse import sse_client
+from mcp.client.streamable_http import streamablehttp_client
 
 from mcp import ClientSession, types
 from mcp.types import (
@@ -75,6 +77,48 @@ def generate_alias_name(original_name: str, existing_names: set) -> str:
         alias_name = f"{original_alias_name}_{suffix_counter}"
         suffix_counter += 1
     return alias_name
+
+
+async def call_tool_with_forwarded_auth(
+    request: Request,
+    app,
+    session: ClientSession,
+    endpoint_name: str,
+    arguments: dict,
+) -> CallToolResult:
+    """Call a tool, forwarding the Authorization header if provided."""
+
+    auth_header = request.headers.get("Authorization")
+    server_type = getattr(app.state, "server_type", "stdio")
+
+    if auth_header and server_type in {"sse", "streamablehttp", "streamable_http"}:
+        base_headers = getattr(app.state, "headers", {}) or {}
+        if isinstance(base_headers, str):
+            try:
+                base_headers = json.loads(base_headers)
+            except Exception:
+                base_headers = {}
+
+        headers = dict(base_headers)
+        headers["Authorization"] = auth_header
+
+        if server_type == "sse":
+            async with sse_client(url=app.state.args, headers=headers) as (reader, writer):
+                async with ClientSession(reader, writer) as temp_session:
+                    return await temp_session.call_tool(endpoint_name, arguments=arguments)
+        else:
+            url = app.state.args
+            if not url.endswith("/"):
+                url = f"{url}/"
+            async with streamablehttp_client(url=url, headers=headers) as (
+                reader,
+                writer,
+                _,
+            ):
+                async with ClientSession(reader, writer) as temp_session:
+                    return await temp_session.call_tool(endpoint_name, arguments=arguments)
+
+    return await session.call_tool(endpoint_name, arguments=arguments)
 
 
 def _process_schema_property(
@@ -260,6 +304,7 @@ def get_model_fields(form_model_name, properties, required_fields, schema_defs=N
 
 
 def get_tool_handler(
+    app,
     session,
     endpoint_name,
     form_model_fields,
@@ -276,11 +321,17 @@ def get_tool_handler(
         def make_endpoint_func(
             endpoint_name: str, FormModel, session: ClientSession
         ):  # Parameterized endpoint
-            async def tool(form_data: FormModel) -> Union[ResponseModel, Any]:
+            async def tool(request: Request, form_data: FormModel) -> Union[ResponseModel, Any]:
                 args = form_data.model_dump(exclude_none=True, by_alias=True)
                 logger.info(f"Calling endpoint: {endpoint_name}, with args: {args}")
                 try:
-                    result = await session.call_tool(endpoint_name, arguments=args)
+                    result = await call_tool_with_forwarded_auth(
+                        request,
+                        app,
+                        session,
+                        endpoint_name,
+                        args,
+                    )
 
                     if result.isError:
                         error_message = "Unknown tool execution error"
@@ -332,12 +383,16 @@ def get_tool_handler(
         def make_endpoint_func_no_args(
             endpoint_name: str, session: ClientSession
         ):  # Parameterless endpoint
-            async def tool():  # No parameters
+            async def tool(request: Request):  # No parameters
                 logger.info(f"Calling endpoint: {endpoint_name}, with no args")
                 try:
-                    result = await session.call_tool(
-                        endpoint_name, arguments={}
-                    )  # Empty dict
+                    result = await call_tool_with_forwarded_auth(
+                        request,
+                        app,
+                        session,
+                        endpoint_name,
+                        {},
+                    )
 
                     if result.isError:
                         error_message = "Unknown tool execution error"
