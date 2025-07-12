@@ -52,6 +52,11 @@ You can also provide headers for the SSE connection:
 mcpo --port 8000 --api-key "top-secret" --server-type "sse" --headers '{"Authorization": "Bearer token", "X-Custom-Header": "value"}' -- http://127.0.0.1:8001/sse
 ```
 
+When mcpo is used behind **Open WebUI**, the `Authorization` header from each
+incoming request is forwarded to the MCP server when using `sse` or
+`streamable_http` modes. This allows Open WebUI to pass user tokens directly to
+your MCP tools without additional configuration.
+
 To use a Streamable HTTP-compatible MCP server, specify the server type and endpoint:
 
 ```bash

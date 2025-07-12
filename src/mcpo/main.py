@@ -67,6 +67,7 @@ async def create_dynamic_endpoints(app: FastAPI, api_dependency=None):
             )
 
         tool_handler = get_tool_handler(
+            app,
             session,
             endpoint_name,
             form_model_fields,
